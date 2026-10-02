@@ -69,6 +69,24 @@ public class ItemImplementCardController extends BaseController {
         return toAjax(itemImplementCardService.updateTItemImplementCard(record));
     }
 
+    @Log(title = "实施清单配置卡推进", action = "advance")
+    @ApiOperation(value = "推进一档", notes = "推进一档（待核对→已核对→已冻住，一次只走一档）")
+    @PostMapping("/advance")
+    @RequiresPermissions("item:itemImplementCard:advance")
+    @ResponseBody
+    public AjaxResult advance(Long id) {
+        return toAjax(itemImplementCardService.advanceTItemImplementCard(id));
+    }
+
+    @Log(title = "实施清单配置卡退回", action = "revert")
+    @ApiOperation(value = "退回一档", notes = "退回一档（已核对→待核对，旧记录沉底留痕）")
+    @PostMapping("/revert")
+    @RequiresPermissions("item:itemImplementCard:revert")
+    @ResponseBody
+    public AjaxResult revert(Long id) {
+        return toAjax(itemImplementCardService.revertTItemImplementCard(id));
+    }
+
     @Log(title = "实施清单配置卡删除", action = "remove")
     @ApiOperation(value = "删除", notes = "删除")
     @DeleteMapping("/remove")

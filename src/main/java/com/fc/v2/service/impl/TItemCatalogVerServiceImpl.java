@@ -42,7 +42,12 @@ public class TItemCatalogVerServiceImpl implements ITItemCatalogVerService {
             return null;
         }
         int st = r.getStage() == null ? 0 : r.getStage();
-        r.setStage(Math.min(st + 2, MAX_STAGE));
+        if (st >= MAX_STAGE || (r.getStatus() != null && r.getStatus() == STATUS_TERMINAL)) {
+            // 已到顶或已作废，不再走
+            return null;
+        }
+        // 一次只走一档，与实施清单配置卡冻结的步调对齐，名录账才合得上
+        r.setStage(st + 1);
         r.setStatus(STATUS_ACTIVE);
         r.setLastAction(remark);
         this.itemCatalogVerMapper.updateById(r);
@@ -55,7 +60,13 @@ public class TItemCatalogVerServiceImpl implements ITItemCatalogVerService {
         if (r == null) {
             return null;
         }
-        r.setStage(0);
+        int st = r.getStage() == null ? 0 : r.getStage();
+        if (st <= 0 || (r.getStatus() != null && r.getStatus() == STATUS_TERMINAL)) {
+            // 已到底或已作废，不再退
+            return null;
+        }
+        // 一次只退一档，不一竿子打回草拟
+        r.setStage(st - 1);
         r.setStatus(STATUS_ACTIVE);
         r.setLastAction(remark);
         this.itemCatalogVerMapper.updateById(r);
