@@ -110,6 +110,16 @@ public class GlobalExceptionResolver{
     }
     
     /**
+     * 业务规则异常：越档推进、动冻住卡、重复建卡等，回中文原因
+     */
+    @ExceptionHandler(BizException.class)
+    public AjaxResult bizException(BizException e)
+    {
+        logger.warn("业务规则拦截: {}", e.getMessage());
+        return AjaxResult.error(e.getMessage());
+    }
+
+    /**
      * 拦截未知的运行时异常
      */
     @ExceptionHandler(RuntimeException.class)

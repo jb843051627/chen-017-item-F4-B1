@@ -77,10 +77,10 @@ public class TItemImplementCard implements Serializable {
     @ApiModelProperty(value = "进展 0待核对 1已核对 2已冻住")
     private Integer status;
 
-    /** 删除标记 0正常 1删除 */
+    /** 删除标记 0正常；撤卡后记本卡id（非0即删，且给唯一索引让出槽位） */
     @TableField("del_flag")
-    @ApiModelProperty(value = "删除标记 0正常 1删除")
-    private Integer delFlag;
+    @ApiModelProperty(value = "删除标记 0正常 撤卡后记本卡id")
+    private Long delFlag;
 
     /** 创建者 */
     @TableField(value = "create_by", fill = FieldFill.INSERT)
@@ -189,11 +189,11 @@ public class TItemImplementCard implements Serializable {
         this.status = status;
     }
 
-    public Integer getDelFlag() {
+    public Long getDelFlag() {
         return delFlag;
     }
 
-    public void setDelFlag(Integer delFlag) {
+    public void setDelFlag(Long delFlag) {
         this.delFlag = delFlag;
     }
 

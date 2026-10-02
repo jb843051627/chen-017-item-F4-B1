@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.pollix.at/thymeleaf/shiro">
+<head>
+    <th:block th:include="include :: header('实施清单配置卡台账')"/>
+</head>
+<body class="pear-container">
+<div class="layui-card">
+    <div class="layui-card-body">
+        <form class="layui-form" action="">
+            <div class="layui-form-item">
+                <label class="layui-form-label">承办部门</label>
+                <div class="layui-input-inline">
+                    <select name="siteId" id="query-siteId">
+                        <option value="">全部部门</option>
+                    </select>
+                </div>
+                <label class="layui-form-label">卡号</label>
+                <div class="layui-input-inline">
+                    <input type="text" name="billNo" placeholder="配置卡号" class="layui-input">
+                </div>
+                <label class="layui-form-label">进展</label>
+                <div class="layui-input-inline">
+                    <select name="status">
+                        <option value="">全部进展</option>
+                        <option value="0">待核对</option>
+                        <option value="1">已核对</option>
+                        <option value="2">已冻住</option>
+                    </select>
+                </div>
+                <button class="pear-btn pear-btn-md pear-btn-primary" lay-submit lay-filter="card-query">
+                    <i class="layui-icon layui-icon-search"></i> 查询
+                </button>
+                <button type="reset" class="pear-btn pear-btn-md">
+                    <i class="layui-icon layui-icon-refresh"></i> 重置
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="layui-card">
+    <div class="layui-card-body">
+        <form class="layui-form" action="">
+            <div class="layui-form-item">
+                <label class="layui-form-label">部门名额账</label>
+                <div class="layui-input-inline" style="width:220px">
+                    <select id="quota-siteId" lay-filter="quota-site">
+                        <option value="">选择部门对账</option>
+                    </select>
+                </div>
+                <div class="layui-input-inline" id="quota-box" style="line-height:38px;color:#666">
+                    待核对 <b id="q-pending">-</b> ｜ 已核对 <b id="q-checked">-</b> ｜ 已冻住 <b id="q-frozen">-</b> ｜ 底册记名额 <b id="q-used">-</b>
+                    <span id="q-flag"></span>
+                </div>
+                <button type="button" class="pear-btn pear-btn-md pear-btn-warming" id="quota-reconcile">
+                    <i class="layui-icon layui-icon-refresh-3"></i> 按卡实拨正
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="layui-card">
+    <div class="layui-card-body">
+        <table id="card-table" lay-filter="card-table"></table>
+    </div>
+</div>
+</body>
+
+<script type="text/html" id="card-toolbar">
+    <button shiro:hasPermission="item:itemImplementCard:add" class="pear-btn pear-btn-primary pear-btn-md" lay-event="add">
+        <i class="layui-icon layui-icon-add-1"></i> 新建配置卡
+    </button>
+</script>
+
+<script type="text/html" id="card-bar">
+    {{#  if(d.status == 0){ }}
+    <button shiro:hasPermission="item:itemImplementCard:advance" class="pear-btn pear-btn-primary pear-btn-sm" lay-event="advance">推进核对</button>
+    <button shiro:hasPermission="item:itemImplementCard:edit" class="pear-btn pear-btn-normal pear-btn-sm" lay-event="edit"><i class="layui-icon layui-icon-edit"></i></button>
+    <button shiro:hasPermission="item:itemImplementCard:remove" class="pear-btn pear-btn-danger pear-btn-sm" lay-event="remove"><i class="layui-icon layui-icon-delete"></i></button>
+    {{#  } else if(d.status == 1){ }}
+    <button shiro:hasPermission="item:itemImplementCard:advance" class="pear-btn pear-btn-primary pear-btn-sm" lay-event="freeze">冻住</button>
+    <button shiro:hasPermission="item:itemImplementCard:revert" class="pear-btn pear-btn-warming pear-btn-sm" lay-event="revert">退回待核对</button>
+    {{#  } else { }}
+    <span class="layui-badge layui-bg-gray">终态</span>
+    {{#  } }}
+    <button class="pear-btn pear-btn-sm" lay-event="logs"><i class="layui-icon layui-icon-list"></i> 留痕</button>
+</script>
+
+<script type="text/html" id="card-status">
+    {{#  if(d.status == 0){ }}<span class="layui-badge layui-bg-orange">待核对</span>
+    {{#  } else if(d.status == 1){ }}<span class="layui-badge layui-bg-blue">已核对</span>
+    {{#  } else { }}<span class="layui-badge">已冻住</span>{{#  } }}
+</script>
+
+<th:block th:include="include :: footer"/>
+<script>
+    layui.use(['table', 'form', 'jquery', 'layer'], function () {
+        let table = layui.table, form = layui.form, $ = layui.jquery, layer = layui.layer;
+        let MODULE_PATH = rootPath + "/ItemImplementCardController/";
+
+        // 底册下拉（筛选用，已撤并的也列出来但标注）
+        $.get(MODULE_PATH + 'sites', function (res) {
+            let sites = res.data || [];
+            sites.forEach(function (s) {
+                let label = s.siteName + (s.status == 1 ? '（已撤并）' : '');
+                $('#query-siteId').append('<option value="' + s.id + '">' + label + '</option>');
+                $('#quota-siteId').append('<option value="' + s.id + '">' + label + '</option>');
+            });
+            form.render('select');
+        });
+
+        table.render({
+            elem: '#card-table',
+            url: MODULE_PATH + 'list',
+            method: 'get',
+            page: true,
+            cols: [[
+                {title: 'ID', field: 'id', align: 'center', hide: true},
+                {title: '配置卡号', field: 'billNo', align: 'center', width: 180},
+                {title: '部门代号', field: 'siteNo', align: 'center', width: 90},
+                {title: '版次序', field: 'nodeNo', align: 'center', width: 80},
+                {title: '年办件量', field: 'qty', align: 'right', width: 110},
+                {title: '承诺时限', field: 'fineAmt', align: 'right', width: 100},
+                {title: '监督层级', field: 'gradeLevel', align: 'center', width: 90},
+                {title: '校验串', field: 'content', align: 'center', width: 150, templet: function (d) {
+                        return d.content ? d.content.substring(0, 12) + '…' : '<span class="layui-badge layui-bg-gray">旧卡待补</span>';
+                    }},
+                {title: '进展', field: 'status', align: 'center', width: 100, toolbar: '#card-status'},
+                {title: '建卡时间', field: 'createTime', align: 'center', width: 170},
+                {title: '操作', toolbar: '#card-bar', align: 'center', width: 300, fixed: 'right'}
+            ]],
+            skin: 'line',
+            toolbar: '#card-toolbar',
+            defaultToolbar: ['filter', 'print', 'exports'],
+            where: {orderByColumn: 'create_time', isAsc: 'asc'}
+        });
+
+        form.on('submit(card-query)', function (data) {
+            table.reload('card-table', {where: data.field, page: {curr: 1}});
+            return false;
+        });
+
+        function postAction(url, id, okReload) {
+            $.post(MODULE_PATH + url, {id: id}, function (res) {
+                if (res.code == 200) {
+                    layer.msg(res.msg, {icon: 1, time: 900}, function () {
+                        table.reload('card-table');
+                        if (okReload) okReload();
+                    });
+                } else {
+                    layer.msg(res.msg, {icon: 2});
+                }
+            });
+        }
+
+        table.on('tool(card-table)', function (obj) {
+            let d = obj.data;
+            if (obj.event === 'advance') {
+                postAction('advance', d.id);
+            } else if (obj.event === 'freeze') {
+                layer.confirm('冻住后不可退回、不可改、不可撤，确认冻住此卡？', {icon: 3, title: '冻住确认'}, function (idx) {
+                    layer.close(idx);
+                    postAction('advance', d.id);
+                });
+            } else if (obj.event === 'revert') {
+                layer.confirm('退回后回到待核对，先前的核对留痕仍保留。确认退回？', {icon: 3, title: '退回确认'}, function (idx) {
+                    layer.close(idx);
+                    postAction('revert', d.id);
+                });
+            } else if (obj.event === 'edit') {
+                layer.open({type: 2, title: '修改配置卡（仅待核对可改）', shade: 0.1, area: ['560px', '520px'],
+                    content: MODULE_PATH + 'edit/' + d.id});
+            } else if (obj.event === 'remove') {
+                layer.confirm('确定撤掉此卡？已冻住的卡撤不掉。', {icon: 3, title: '撤卡确认'}, function (idx) {
+                    layer.close(idx);
+                    $.ajax({url: MODULE_PATH + 'remove?ids=' + d.id, type: 'delete', success: function (res) {
+                            layer.msg(res.msg, {icon: res.code == 200 ? 1 : 2}, function () {
+                                if (res.code == 200) table.reload('card-table');
+                            });
+                        }});
+                });
+            } else if (obj.event === 'logs') {
+                showLogs(d);
+            }
+        });
+
+        table.on('toolbar(card-table)', function (obj) {
+            if (obj.event === 'add') {
+                layer.open({type: 2, title: '新建实施清单配置卡', shade: 0.1, area: ['560px', '560px'],
+                    content: MODULE_PATH + 'add'});
+            }
+        });
+
+        // 留痕台账：每一次核对/退回/冻住/改档，按轮次先后排列
+        function showLogs(d) {
+            $.get(MODULE_PATH + 'logs/' + d.id, function (res) {
+                let logs = res.data || [];
+                let rows = logs.map(function (l) {
+                    let name = {CHECK: '核对通过', REVERT: '退回待核对', FREEZE: '冻住', EDIT: '要素改档'}[l.action] || l.action;
+                    return '<tr><td>' + l.roundNo + '</td><td>' + name + '</td><td>第' + l.nodeNo + '版</td>'
+                        + '<td>' + (l.checkSum ? l.checkSum.substring(0, 16) + '…' : '') + '</td>'
+                        + '<td>' + (l.createTime || '') + '</td><td>' + (l.remark || '') + '</td></tr>';
+                }).join('');
+                if (!rows) rows = '<tr><td colspan="6" style="text-align:center;color:#999">尚无动作记录</td></tr>';
+                layer.open({
+                    type: 1, title: '核对留痕 — ' + d.billNo, area: ['760px', '460px'],
+                    content: '<table class="layui-table" style="margin:10px;width:720px"><thead><tr>'
+                        + '<th>轮次</th><th>动作</th><th>版次</th><th>校验串</th><th>时刻</th><th>备注</th>'
+                        + '</tr></thead><tbody>' + rows + '</tbody></table>'
+                });
+            });
+        }
+
+        // 部门名额账
+        function loadQuota(siteId) {
+            if (!siteId) return;
+            $.get(MODULE_PATH + 'quota/' + siteId, function (res) {
+                let q = res.data;
+                $('#q-pending').text(q.pendingCount);
+                $('#q-checked').text(q.checkedCount);
+                $('#q-frozen').text(q.frozenCount);
+                $('#q-used').text(q.frozenQuotaUsed);
+                $('#q-flag').html(q.reconciled
+                    ? '<span class="layui-badge layui-bg-green">账实相符</span>'
+                    : '<span class="layui-badge">账实不符</span>');
+            });
+        }
+        form.on('select(quota-site)', function (data) { loadQuota(data.value); });
+        $('#quota-reconcile').on('click', function () {
+            let siteId = $('#quota-siteId').val();
+            if (!siteId) { layer.msg('先选部门', {icon: 3}); return; }
+            $.post(MODULE_PATH + 'reconcile/' + siteId, function (res) {
+                layer.msg(res.msg, {icon: res.code == 200 ? 1 : 2}, function () { loadQuota(siteId); table.reload('card-table'); });
+            });
+        });
+    })
+</script>
+</html>

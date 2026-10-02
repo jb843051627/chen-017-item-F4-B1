@@ -67,6 +67,11 @@ public class TItemDeptArch implements Serializable {
     @ApiModelProperty(value = "高界(件/年)")
     private BigDecimal th3Max;
 
+    /** 已冻住配置卡占掉的名额（与卡实际冻结数同进同退） */
+    @TableField("frozen_quota_used")
+    @ApiModelProperty(value = "已冻住配置卡占掉的名额")
+    private Integer frozenQuotaUsed;
+
     /** 底册情形 0在编 1已撤并 */
     @TableField("status")
     @ApiModelProperty(value = "底册情形 0在编 1已撤并")
@@ -166,6 +171,14 @@ public class TItemDeptArch implements Serializable {
 
     public void setTh3Max(BigDecimal th3Max) {
         this.th3Max = th3Max;
+    }
+
+    public Integer getFrozenQuotaUsed() {
+        return frozenQuotaUsed;
+    }
+
+    public void setFrozenQuotaUsed(Integer frozenQuotaUsed) {
+        this.frozenQuotaUsed = frozenQuotaUsed;
     }
 
     public Integer getStatus() {
